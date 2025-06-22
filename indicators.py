@@ -2,6 +2,7 @@ import requests
 import pandas as pd
 import numpy as np
 import ta
+import time
 
 # Таймфреймы и соответствующие интервалы Bybit
 TIMEFRAMES = {
@@ -26,7 +27,7 @@ def fetch_ohlcv(symbol: str, interval: str, limit: int = 200):
     response = requests.get(url, params=params)
     data = response.json()
     if "result" not in data or "list" not in data["result"]:
-        raise ValueError("Invalid response from Bybit")
+        raise ValueError(f"Invalid response from Bybit for interval {interval}")
     ohlcv = pd.DataFrame(data["result"]["list"])
     ohlcv.columns = ["timestamp", "open", "high", "low", "close", "volume", "_"]
     ohlcv = ohlcv[["timestamp", "open", "high", "low", "close", "volume"]]
@@ -49,9 +50,9 @@ def compute_indicators(df):
     stoch_d = stoch_rsi.stochrsi_d().iloc[-1]
 
     return {
-        "close": round(close.iloc[-1], 10),
-        "ema_50": round(ema_50, 10),
-        "ema_200": round(ema_200, 10),
+        "close": round(close.iloc[-1], 2),
+        "ema_50": round(ema_50, 2),
+        "ema_200": round(ema_200, 2),
         "rsi": round(rsi, 2),
         "stoch_rsi_k": round(stoch_k, 2),
         "stoch_rsi_d": round(stoch_d, 2),
@@ -62,6 +63,8 @@ def compute_indicators(df):
 def compute_indicators_for_all_timeframes(symbol: str):
     result = {}
     for name, interval in TIMEFRAMES.items():
+        print(f"Fetching {symbol} data for {name} timeframe...")
         df = fetch_ohlcv(symbol, interval)
         result[name] = compute_indicators(df)
+        time.sleep(1)  # ⏳ Пауза между запросами, чтобы API не баговал
     return result
